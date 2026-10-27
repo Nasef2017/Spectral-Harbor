@@ -34,12 +34,12 @@ def build_target_grid(
 ) -> Dict[str, Any]:
     """
     Construct a unified raster target grid for an AOI geometry.
-    
+
     Parameters:
         aoi_geojson: GeoJSON geometry dictionary (in EPSG:4326).
         target_crs: Optional CRS string (e.g. 'EPSG:32635'). If None, calculates optimal UTM.
         pixel_size: Grid cell resolution in CRS units (e.g. 10.0 or 30.0 meters).
-        
+
     Returns:
         Dict with keys:
           - crs: rasterio.crs.CRS
@@ -61,7 +61,7 @@ def build_target_grid(
         dst_crs = rasterio.crs.CRS.from_user_input(target_crs)
 
     src_crs = rasterio.crs.CRS.from_epsg(4326)
-    
+
     # Reproject AOI geometry to target CRS
     aoi_proj = shape(transform_geom(src_crs, dst_crs, mapping(aoi_shapely)))
 
@@ -114,7 +114,7 @@ def read_raster_into_grid(
     """
     Read remote COG / local raster and reproject directly into target grid.
     Supports both HTTPS and S3 (/vsis3/) protocols with access issue detection.
-    
+
     Parameters:
         url_or_path: Remote HTTPS URL, S3 URI, or local file path.
         target_crs: Destination CRS.
@@ -125,7 +125,7 @@ def read_raster_into_grid(
         src_nodata: Expected source nodata.
         target_nodata: Target nodata.
         window_bounds: Optional (minx, miny, maxx, maxy) in target_crs to optimize reading.
-        
+
     Returns:
         (data_array, valid_mask)
     """
@@ -176,7 +176,7 @@ def read_raster_into_grid(
         with rasterio.Env(**env_kwargs):
             with rasterio.open(read_path) as src:
                 actual_src_nodata = src.nodata if src.nodata is not None else src_nodata
-                
+
                 reproject(
                     source=rasterio.band(src, 1),
                     destination=destination,

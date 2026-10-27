@@ -4,12 +4,10 @@ The processor/normalization modules are unchanged upstream snapshots. The grid
 uses rasterio's native geometry transform instead of the reported pyproj call.
 """
 import json
-import os
-import shutil
 import time
 import sys
 from pathlib import Path
-from .catalog import bands,validate,asset_url,PLATFORMS
+from .catalog import validate,asset_url,PLATFORMS
 from .vendor.bathymetrix_stac import processor,stac_client,grid
 
 
@@ -90,13 +88,11 @@ def process(items,config,outdir,log=print,progress=None):
     metadata=json.loads(metadata_path.read_text(encoding='utf-8'))
     metadata['scaling_applied_by']='Spectral Harbor STAC reader (surface reflectance, already scaled)'
     metadata_path.write_text(json.dumps(metadata,indent=2),encoding='utf-8')
-    # Stable output name for the existing UI/Processing contract, with no second
-    # raster encoding. NTFS hard links avoid duplicate data where supported.
-    alias=outdir/'reflectance.tif'
-    try: os.link(primary,alias)
-    except OSError: shutil.copyfile(primary,alias)
-    provenance=dict(plugin='Spectral Harbor 1.3.3',engine='Spectral Harbor raster-processing pipeline',
+    # Save provenance and return primary descriptive raster without creating
+    # a duplicate generic 'reflectance.tif' file.
+    provenance=dict(plugin='Spectral Harbor 1.3.4',engine='Spectral Harbor raster-processing pipeline',
                     config=config,scenes=[{'id':s['id'],'platform':s['platform']} for s in scenes],
+                    primary_raster=str(primary),primary_filename=primary.name,
                     reference_outputs={k:v for k,v in outputs.items() if isinstance(v,str)},
                     calibration='Sensor-specific normalization including baseline/value-range heuristics',
                     native_isolation='Rasterio worker; no QGIS, pyproj or osgeo imported',
@@ -105,5 +101,6 @@ def process(items,config,outdir,log=print,progress=None):
                     loaded_conflicts=[name for name in ('qgis','pyproj','osgeo') if name in sys.modules],
                     grid_change='rasterio.warp.transform_geom replaces pyproj.Transformer')
     (outdir/'provenance.json').write_text(json.dumps(provenance,indent=2),encoding='utf-8')
+    (outdir/'primary_raster.txt').write_text(str(primary),encoding='utf-8')
     if progress is not None: progress(100)
-    return str(alias)
+    return str(primary)

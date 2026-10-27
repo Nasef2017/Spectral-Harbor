@@ -5,9 +5,9 @@ Choose the satellite, area, dates, scene-cloud limit and bands. Create a single-
 
 Spectral Harbor handles image reading, sensor-specific reflectance normalization, quality layers and temporal compositing in a separate processing task. It runs independently and does not require another QGIS plugin.
 
-Results are Float32 GeoTIFFs with -9999 nodata, native processing metadata, and a reflectance.tif alias that can be added to the map automatically. Median runs also create the original count, standard-deviation and water-occurrence outputs. Existing water options follow the upstream single-scene/composite behavior.
+Results are Float32 GeoTIFFs with -9999 nodata, native processing metadata, and descriptive Float32 filenames (e.g. S2A_YYYYMMDD_<SceneID>_BOA_Float32.tif) that are loaded into QGIS with matching layer titles. Median runs also create the original count, standard-deviation and water-occurrence outputs. Existing water options follow the upstream single-scene/composite behavior.
 
-Developed by Mohamed Aly Nasef. License: GPL-3.0-or-later, with third-party notices included in the distribution. Satellite data and access services retain their separate terms. Experimental local release; see the bundled guide, references, notices and validation report.'''
+Developed by Mohamed Aly Nasef. License: GPL-3.0-or-later, with third-party notices included in the distribution. Satellite data and access services retain their separate terms. Official stable release; see the bundled guide, references, notices and validation report.'''
 
 SHORT_HELP = '''<h3>Download selected surface-reflectance bands</h3>
 <p><b>Sentinel-2A Level-2A</b> (12 bands, no B10) and <b>Landsat 8/9 Collection 2 Level-2</b> (7 SR bands), through Earth Search.</p>
@@ -22,7 +22,7 @@ SHORT_HELP = '''<h3>Download selected surface-reflectance bands</h3>
 <h4>Scene selection</h4>
 <p><b>Single scene:</b> lowest scene-cloud candidate passing the filters. <b>Temporal median:</b> all passing candidates, unless exact scene IDs restrict them. The candidate cap is applied before ROI coverage filtering; this is not an exhaustive best-scene search. Use the Raster menu scene browser to preview and manually select results.</p>
 <h4>Outputs and quality</h4>
-<p><code>reflectance.tif</code> is a stable alias of the upstream Float32 product, with <b>-9999 nodata</b>. Native product names, metadata and masks are retained. Count/std/occurrence rasters are <b>median outputs</b>, not single-scene outputs. <code>provenance.json</code> marks completion.</p>
+<p>Outputs are saved with descriptive filenames (e.g. <code>S2A_YYYYMMDD_&lt;SceneID&gt;_BOA_Float32.tif</code>) with <b>-9999 nodata</b> and added to QGIS using their descriptive title. Native product names, metadata and masks are retained. Count/std/occurrence rasters are <b>median outputs</b>, not single-scene outputs. <code>provenance.json</code> marks completion.</p>
 <p>Processing produces surface reflectance on the chosen output grid. Single-scene full-ROI output can retain cloudy pixels when water-only is off. Median uses the original QA rules. Water method/strictness/Otsu/manual-threshold controls apply to <b>single scenes</b>; median retains the upstream hybrid/consensus policy. A water-mask file can be saved without applying it to reflectance.</p>
 <p>Only selected reflectance bands are read. Include green/NIR or green/SWIR1 when the chosen spectral water method needs them. Search and raster processing run in separate child processes; cancel stops the active worker. Partial run folders are incomplete.</p>
 <p><b>Standalone:</b> no other QGIS plugin or cloud account is required. Licensing and third-party notices are included in the distribution. Open the offline help for the full guide, limits, dependencies and citations.</p>'''
@@ -45,6 +45,6 @@ PARAMETER_HELP = {
     'STRICT':'Single-scene hybrid only: require both the classification water flag and the spectral water test. Off uses the upstream permissive rule.',
     'OTSU':'Single-scene spectral/hybrid water test only: estimate its threshold automatically with Otsu. Off uses the manual threshold.',
     'THRESHOLD':'Single-scene index threshold between -1 and 1, used only when automatic Otsu is off. It does not alter the upstream median water policy.',
-    'OUTPUT':'Destination directory, not a raster filename. A unique SpectralHarbor run subfolder keeps the native products, reflectance.tif alias and metadata.',
-    'LOAD_OUTPUT':'Add reflectance.tif to the QGIS map and Layers panel after success (default on). No map loading occurs in a headless context without a project.',
+    'OUTPUT':'Destination directory, not a raster filename. A unique SpectralHarbor run subfolder keeps the native products and metadata.',
+    'LOAD_OUTPUT':'Add the descriptive reflectance raster to the QGIS map and Layers panel after success (default on). No map loading occurs in a headless context without a project.',
 }

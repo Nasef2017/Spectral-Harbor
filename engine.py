@@ -185,7 +185,19 @@ def process(items,config,outdir,log=print,local=False,progress=None):
             result=np.nanmedian(cube,axis=0).astype('float32')
             std=np.nanstd(cube,axis=0).astype('float32')
     if progress is not None: progress(90)
-    write_raster(outdir/'reflectance.tif',result,grid,config['bands'])
+    mode_str = "WaterOnly" if config.get('water_only') else "BOA_Float32"
+    if len(stacks) == 1:
+        clean_id = items[0]['id'].replace('/', '_')
+        plat = items[0].get('properties', {}).get('platform', 'satellite').upper()
+        clean_base = clean_id if clean_id.upper().startswith((plat, 'S2A', 'S2B', 'LC08', 'LC09')) else f"{plat}_{clean_id}"
+        refl_name = f"{clean_base}_{mode_str}.tif"
+    else:
+        plat_str = config['platform'].replace(' ', '_').replace('&', 'and')
+        s_date = config['start'].replace('-', '')
+        e_date = config['end'].replace('-', '')
+        refl_name = f"{plat_str}_{s_date}_{e_date}_Median_Composite_{mode_str}.tif"
+    primary_raster = outdir / refl_name
+    write_raster(primary_raster,result,grid,config['bands'])
     count[~grid['mask']]=65535
     write_raster(outdir/'valid_count.tif',count,grid,['valid_observation_count'],gdal.GDT_UInt16,65535)
     write_raster(outdir/'temporal_std.tif',std,grid,config['bands'])
@@ -202,9 +214,10 @@ def process(items,config,outdir,log=print,local=False,progress=None):
         clean.append({'id':item['id'],'collection':item.get('collection'),'properties':item['properties'],
                       'assets':{k:{'href':v['href'].split('?')[0],'raster:bands':v.get('raster:bands')}
                                 for k,v in item['assets'].items() if k in {b[1] for b in bands(config['platform'])}}})
-    provenance={'plugin':'Spectral Harbor 1.3.0','config':config,'scenes':clean,
+    provenance={'plugin':'Spectral Harbor 1.3.4','config':config,'scenes':clean,
                 'epsg':grid['epsg'],'gdal':gdal.VersionInfo(),'resampling':{'reflectance':'bilinear','qa':'nearest'},
                 'notes':'No cross-sensor harmonization; median of per-scene scaled, quality-masked observations.'}
     (outdir/'provenance.json').write_text(json.dumps(provenance,indent=2),encoding='utf-8')
+    (outdir/'primary_raster.txt').write_text(str(primary_raster),encoding='utf-8')
     if progress is not None: progress(100)
-    return str(outdir/'reflectance.tif')
+    return str(primary_raster)

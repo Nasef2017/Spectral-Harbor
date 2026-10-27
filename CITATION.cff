@@ -1,7 +1,7 @@
 cff-version: 1.3.0
 message: "Please cite the software and relevant satellite products and methods in docs/REFERENCES.md."
 title: "Spectral Harbor"
-version: "1.3.3"
+version: "1.3.4"
 date-released: "2026-10-27"
 type: software
 authors:

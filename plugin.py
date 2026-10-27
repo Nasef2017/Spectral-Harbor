@@ -9,7 +9,7 @@ from qgis.PyQt.QtWidgets import (QDialog,QVBoxLayout,QFormLayout,QHBoxLayout,QCo
     QListWidget,QListWidgetItem,QAbstractItemView,QPushButton,QLineEdit,QDateEdit,
     QDoubleSpinBox,QSpinBox,QCheckBox,QFileDialog,QPlainTextEdit,QMessageBox,QLabel,QScrollArea,QWidget,QProgressBar)
 from qgis.core import (QgsGeometry,QgsCoordinateReferenceSystem,QgsCoordinateTransform,
-    QgsProject,QgsRasterLayer,QgsWkbTypes,QgsRectangle,QgsPointXY,QgsApplication)
+    QgsProject,QgsRasterLayer,QgsWkbTypes,QgsRectangle,QgsApplication)
 from qgis.gui import QgsMapTool, QgsRubberBand
 from .catalog import PLATFORMS, bands, validate
 from .events import parse_line
@@ -279,11 +279,16 @@ class Dialog(QDialog):
                     p=scene['properties']; self.scenes.addItem(f'{scene["id"]} · cloud {p["eo:cloud_cover"]:.1f}% · ROI {p["spectralharbor:roi_coverage"]:.1f}%')
                 if self.items: self.scenes.item(0).setSelected(True)
             else:
-                path=Path(self.job['outdir'])/'reflectance.tif'
-                layer=QgsRasterLayer(str(path),'Spectral Harbor reflectance')
+                primary_file = Path(self.job['outdir']) / 'primary_raster.txt'
+                if primary_file.is_file():
+                    path = Path(primary_file.read_text(encoding='utf-8').strip())
+                else:
+                    candidates = [p for p in Path(self.job['outdir']).glob('*.tif') if p.name not in ('valid_count.tif', 'temporal_std.tif', 'water_occurrence.tif', 'water_mask.tif', 'reflectance.tif')]
+                    path = candidates[0] if candidates else (Path(self.job['outdir']) / 'reflectance.tif')
+                layer=QgsRasterLayer(str(path), path.stem)
                 if not layer.isValid(): raise ValueError('Output raster is invalid')
                 QgsProject.instance().addMapLayer(layer)
-                self.log.appendPlainText('Complete: '+str(path.parent))
+                self.log.appendPlainText('Complete: '+str(path.name))
         except Exception as exc: self.error(str(exc))
 
     def error(self,message): QMessageBox.warning(self,'Spectral Harbor',message)

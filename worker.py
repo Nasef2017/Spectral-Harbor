@@ -1,7 +1,6 @@
 """Private subprocess entry point. JSON files are the only UI/engine contract."""
 import json
 import sys
-import traceback
 from pathlib import Path
 
 if __package__ in (None,''):

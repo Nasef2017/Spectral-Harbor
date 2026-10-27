@@ -1,8 +1,7 @@
 """Standard QGIS Processing integration with isolated search/download workers."""
 import json
 import os
-import re
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tempfile
 from datetime import date,timedelta,datetime
@@ -43,7 +42,7 @@ def run_worker(job,scratch,feedback):
             if percent is not None: feedback.setProgress(start+(end-start)*percent/100)
     child=None
     try:
-        child=subprocess.Popen([str(executable),str(Path(__file__).with_name('worker.py')),str(request)],
+        child=subprocess.Popen([str(executable),str(Path(__file__).with_name('worker.py')),str(request)],  # nosec B603
              stdout=writer,stderr=subprocess.STDOUT,env=env,
              creationflags=subprocess.CREATE_NO_WINDOW if sys.platform=='win32' else 0)
         while True:
@@ -157,13 +156,18 @@ class DownloadAlgorithm(QgsProcessingAlgorithm):
             run=folder/('SpectralHarbor_'+datetime.now().strftime('%Y%m%d_%H%M%S')+'_'+uuid4().hex[:6])
             feedback.pushInfo(f'Processing {len(items)} scene(s) into {run}')
             run_worker({'action':'process','config':config,'items':items,'outdir':str(run)},scratch,feedback)
-        raster=run/'reflectance.tif'
+        primary_file = run / 'primary_raster.txt'
+        if primary_file.is_file():
+            raster = Path(primary_file.read_text(encoding='utf-8').strip())
+        else:
+            candidates = [p for p in run.glob('*.tif') if p.name not in ('valid_count.tif', 'temporal_std.tif', 'water_occurrence.tif', 'water_mask.tif', 'reflectance.tif')]
+            raster = candidates[0] if candidates else (run / 'reflectance.tif')
         if not raster.is_file() or not (run/'provenance.json').is_file(): raise QgsProcessingException('Worker did not complete outputs')
         if self.parameterAsBool(parameters,'LOAD_OUTPUT',context) and context.project() is not None:
-            # Let Processing load the raster on completion on the main thread.
-            # A declared output alone does not schedule a non-destination raster.
+            # Let Processing load the raster on completion on the main thread using descriptive filename.
+            layer_title = raster.stem
             details=QgsProcessingContext.LayerDetails(
-                'Spectral Harbor reflectance',context.project(),'REFLECTANCE',
+                layer_title,context.project(),'REFLECTANCE',
                 QgsProcessingUtils.LayerHint.Raster)
             context.addLayerToLoadOnCompletion(str(raster),details)
         feedback.setProgress(100)

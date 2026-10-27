@@ -2,7 +2,7 @@
 name=Spectral Harbor
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
-version=1.3.3
+version=1.3.4
 author=Mohamed Aly Nasef
 email=Eng.m.nasef2017@gmail.com
 description=Download selected Sentinel-2A and Landsat 8/9 surface-reflectance bands in QGIS Processing.
@@ -12,20 +12,15 @@ about=Spectral Harbor is a standalone QGIS 4 plugin for downloading selected sur
     
     Spectral Harbor handles image reading, sensor-specific reflectance normalization, quality layers and temporal compositing in a separate processing task. It runs independently and does not require another QGIS plugin.
     
-    Results are Float32 GeoTIFFs with -9999 nodata, native processing metadata, and a reflectance.tif alias that can be added to the map automatically. Median runs also create the original count, standard-deviation and water-occurrence outputs. Existing water options follow the upstream single-scene/composite behavior.
+    Results are Float32 GeoTIFFs with -9999 nodata, native processing metadata, and descriptive Float32 filenames (e.g. S2A_YYYYMMDD_<SceneID>_BOA_Float32.tif) that are loaded into QGIS with matching layer titles. Median runs also create the original count, standard-deviation and water-occurrence outputs. Existing water options follow the upstream single-scene/composite behavior.
     
-    Developed by Mohamed Aly Nasef. License: GPL-3.0-or-later, with third-party notices included in the distribution. Satellite data and access services retain their separate terms. Experimental local release; see the bundled guide, references, notices and validation report.
+    Developed by Mohamed Aly Nasef. License: GPL-3.0-or-later, with third-party notices included in the distribution. Satellite data and access services retain their separate terms. Official stable release; see the bundled guide, references, notices and validation report.
 category=Raster
 icon=icon.png
-experimental=True
+experimental=False
 deprecated=False
 hasProcessingProvider=True
 tags=sentinel-2,landsat,stac,surface reflectance,water,download
-changelog=1.3.3: Product-focused About, help, documentation and output branding; third-party notices retained separately.
-    1.3.2: English-only documentation and offline help.
-    1.3.1: Structured Processing help, parameter explanations, offline guide and clearer About.
-    1.3.0: Complete sensor-specific raster pipeline; automatic 10 m Sentinel-2A / 30 m Landsat defaults and selected-band output.
-    1.2.0: Improved COG caching/retries, bilinear reflectance, live band progress and cached Landsat access.
-    1.1.1: Automatically add completed reflectance to the QGIS map.
-    1.1.0: Processing Toolbox, dynamic band checklist, directory outputs, Batch and Modeler support.
-    1.0.0: Initial standalone downloader.
+homepage=https://github.com/Nasef2017/Spectral-Harbor
+repository=https://github.com/Nasef2017/Spectral-Harbor
+tracker=https://github.com/Nasef2017/Spectral-Harbor/issues

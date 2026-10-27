@@ -15,35 +15,28 @@ exact polygon masking, and Float32 GeoTIFF export.
 
 import os
 import json
-import time
 import warnings
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 import numpy as np
 import rasterio
 
 from .stac_client import (
     BAND_ASSET_MAP,
-    AUX_ASSET_MAP,
     ORDERED_BAND_LIST,
     LANDSAT_BAND_ASSET_MAP,
-    LANDSAT_AUX_ASSET_MAP,
     LANDSAT_ORDERED_BAND_LIST,
     ALLOWED_PLATFORMS,
-    DISALLOWED_PLATFORMS,
-    STACClient
+    DISALLOWED_PLATFORMS
 )
 from .reflectance import (
     normalize_surface_reflectance,
-    normalize_landsat_surface_reflectance,
-    normalize_sensor_reflectance
+    normalize_landsat_surface_reflectance
 )
 from .water_mask import (
     create_water_mask,
     decode_landsat_qa_pixel,
-    decode_landsat_qa_radsat,
-    decode_landsat_qa_aerosol,
-    compute_spectral_index
+    decode_landsat_qa_radsat
 )
 from .grid import build_target_grid, read_raster_into_grid
 
@@ -410,7 +403,8 @@ def process_single_scene(
     # 5. Export GeoTIFF Outputs
     os.makedirs(output_dir, exist_ok=True)
     mode_str = "WaterOnly" if water_only else "BOA_Float32"
-    refl_filename = f"{prefix}_{scene_date}_{scene_id}_{mode_str}.tif"
+    clean_base = scene_id if scene_id.startswith((prefix, "S2A", "S2B", "LC08", "LC09")) else f"{prefix}_{scene_date}_{scene_id}"
+    refl_filename = f"{clean_base}_{mode_str}.tif"
     refl_path = os.path.join(output_dir, refl_filename)
 
     if feedback:
@@ -455,7 +449,7 @@ def process_single_scene(
 
     # Save Water Mask raster if requested
     if save_water_mask_raster and water_uint8_mask is not None:
-        mask_filename = f"{prefix}_{scene_date}_{scene_id}_WaterMask.tif"
+        mask_filename = f"{clean_base}_WaterMask.tif"
         mask_path = os.path.join(output_dir, mask_filename)
         save_singleband_raster(
             mask_path,

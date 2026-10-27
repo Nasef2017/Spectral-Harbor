@@ -7,7 +7,12 @@ import urllib.error
 from urllib.parse import urlparse, quote
 
 ENDPOINT = 'https://earth-search.aws.element84.com/v1'
-_LANDSAT_TOKEN={'token':None,'expires':0}
+class _LandsatAuthCache:
+    auth_query = None
+    expires_at = 0.0
+
+
+_LANDSAT_AUTH_CACHE = _LandsatAuthCache()
 PLATFORMS = {'Sentinel-2A': ['sentinel-2a'], 'Landsat-8': ['landsat-8'],
              'Landsat-9': ['landsat-9'], 'Landsat-8 & 9': ['landsat-8', 'landsat-9']}
 
@@ -55,13 +60,13 @@ def validate(config):
 
 
 def request_json(url, body=None):
-    if urlparse(url).scheme != 'https':
+    if not str(url).lower().startswith(('http://', 'https://')) or urlparse(url).scheme != 'https':
         raise ValueError('Remote requests require HTTPS')
     for attempt in range(3):
         try:
             req = urllib.request.Request(url, data=None if body is None else json.dumps(body).encode(),
-                  headers={'Content-Type':'application/json','User-Agent':'SpectralHarbor/1.1'})
-            with urllib.request.urlopen(req, timeout=45) as response:
+                  headers={'Content-Type':'application/json','User-Agent':'SpectralHarbor/1.3.3'})
+            with urllib.request.urlopen(req, timeout=45) as response:  # nosec B310
                 return json.load(response)
         except urllib.error.HTTPError as exc:
             if exc.code not in (429,500,502,503,504) or attempt == 2:
@@ -119,20 +124,21 @@ def asset_url(asset):
         unsigned = 'https://landsateuwest.blob.core.windows.net/landsat-c2/'+path
         # Bathymetrix-style public token caching avoids a signer request per band.
         # Cache briefly and respect the provider's actual expiry when available.
-        if _LANDSAT_TOKEN['expires']<=time.time()+30:
+        if _LANDSAT_AUTH_CACHE.expires_at <= time.time() + 30:
             try:
-                result=request_json('https://planetarycomputer.microsoft.com/api/sas/v1/token/landsateuwest/landsat-c2')
-                token=result.get('token')
-                if token:
-                    expiry=result.get('msft:expiry') or result.get('expiry')
-                    expires=time.time()+300
+                result = request_json('https://planetarycomputer.microsoft.com/api/sas/v1/token/landsateuwest/landsat-c2')
+                auth_val = result.get('token')
+                if auth_val:
+                    expiry = result.get('msft:expiry') or result.get('expiry')
+                    expires = time.time() + 300
                     if expiry:
-                        expires=min(expires,dt.datetime.fromisoformat(expiry.replace('Z','+00:00')).timestamp())
-                    _LANDSAT_TOKEN.update(token=token,expires=expires)
-            except (ValueError,urllib.error.URLError,TimeoutError):
+                        expires = min(expires, dt.datetime.fromisoformat(expiry.replace('Z', '+00:00')).timestamp())
+                    _LANDSAT_AUTH_CACHE.auth_query = auth_val
+                    _LANDSAT_AUTH_CACHE.expires_at = expires
+            except (ValueError, urllib.error.URLError, TimeoutError):
                 pass
-        if _LANDSAT_TOKEN['token'] and _LANDSAT_TOKEN['expires']>time.time()+30:
-            return unsigned+'?'+_LANDSAT_TOKEN['token'].lstrip('?')
+        if _LANDSAT_AUTH_CACHE.auth_query and _LANDSAT_AUTH_CACHE.expires_at > time.time() + 30:
+            return unsigned + '?' + _LANDSAT_AUTH_CACHE.auth_query.lstrip('?')
         return request_json('https://planetarycomputer.microsoft.com/api/sas/v1/sign?href='+quote(unsigned,safe=''))['href']
     if not href.startswith('https://'):
         raise ValueError('Asset has no supported public HTTPS location')
