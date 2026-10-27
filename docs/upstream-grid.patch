@@ -1,0 +1,40 @@
+--- Bathymetrix_AI/core/stac/grid.py
++++ spectral_harbor/vendor/bathymetrix_stac/grid.py
+@@ -13,14 +13,14 @@
+ from rasterio.warp import reproject, Resampling
+ from rasterio.features import geometry_mask
+ from typing import Tuple, Dict, Any, Optional
+-import pyproj
++from rasterio.warp import transform_geom
+ from shapely.geometry import shape
+-from shapely.ops import transform as shapely_transform
++from shapely.geometry import mapping
+ 
+ 
+ def get_utm_epsg(lon: float, lat: float) -> int:
+     """Calculate the UTM EPSG code for a given WGS84 coordinate."""
+-    zone = int((lon + 180) / 6) + 1
++    zone = min(60, max(1, int((lon + 180) / 6) + 1))
+     if lat >= 0:
+         return 32600 + zone
+     else:
+@@ -63,8 +63,7 @@
+     src_crs = rasterio.crs.CRS.from_epsg(4326)
+     
+     # Reproject AOI geometry to target CRS
+-    project_fn = pyproj.Transformer.from_crs(src_crs, dst_crs, always_xy=True).transform
+-    aoi_proj = shapely_transform(project_fn, aoi_shapely)
++    aoi_proj = shape(transform_geom(src_crs, dst_crs, mapping(aoi_shapely)))
+ 
+     minx, miny, maxx, maxy = aoi_proj.bounds
+ 
+@@ -76,6 +75,9 @@
+ 
+     width = max(1, int(np.round((maxx_snap - minx_snap) / pixel_size)))
+     height = max(1, int(np.round((maxy_snap - miny_snap) / pixel_size)))
++
++    if width * height > 25_000_000:
++        raise ValueError("ROI exceeds 25 million output pixels; increase pixel size or reduce ROI")
+ 
+     grid_transform = from_origin(minx_snap, maxy_snap, pixel_size, pixel_size)
+ 

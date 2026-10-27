@@ -1,0 +1,16 @@
+Spectral Harbor 1.3.2
+Copyright 2026 Mohamed Aly Nasef.
+
+Original name, geometric SVG/PNG logo, user interface, catalog integration, adapters, telemetry, packaging and documentation created with OpenAI Codex assistance. The name has not undergone trademark clearance.
+
+This distribution includes Apache-2.0 source from Bathymetrix-AI, Mohamed Aly Nasef:
+https://github.com/Nasef2017/Bathymetrix-AI
+Local source inspected 2026-10-27, metadata version 8.0, at QGIS4/profiles/default/python/plugins/Bathymetrix_AI/core/stac/.
+
+Copied unchanged: vendor/bathymetrix_stac/processor.py, reflectance.py, water_mask.py and stac_client.py. Adapted: vendor/bathymetrix_stac/grid.py (pyproj replacement and documented UTM/resource guards). Original and bundled hashes: docs/upstream-source-manifest.json. Full grid changes: docs/upstream-grid.patch. A legacy unchanged water module is also retained at vendor/water_mask.py. Adapted upstream tests in the source archive retain this attribution. No upstream root NOTICE file was found.
+
+Full original Apache-2.0 license: vendor/LICENSE-Apache-2.0.txt.
+Combined distribution license: GPL-3.0-or-later (LICENSE).
+Copied source retains its Apache terms, notices and attribution. Bathymetrix-AI is not an installation/runtime dependency and is not relicensed by this package. External QGIS/native dependencies are not bundled.
+
+Satellite data and external services retain their separate terms. No endorsement by ESA, Copernicus, NASA, USGS, Element 84, Microsoft or QGIS is implied.

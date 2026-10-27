@@ -1,0 +1,27 @@
+{
+  "processor.py": {
+    "source_sha256": "ab4ccf4dcc255450191db9035e46890a176ec62944f1274520bc9b51ae31d206",
+    "bundled_sha256": "ab4ccf4dcc255450191db9035e46890a176ec62944f1274520bc9b51ae31d206",
+    "modified": false
+  },
+  "reflectance.py": {
+    "source_sha256": "e7fdeabd94e7520ae7762e63be29445d191a2943fe6224ea0da2d5fea9229071",
+    "bundled_sha256": "e7fdeabd94e7520ae7762e63be29445d191a2943fe6224ea0da2d5fea9229071",
+    "modified": false
+  },
+  "water_mask.py": {
+    "source_sha256": "d277982d21bf82e45040eade981c6b138ec667fd7083972737950a33083f152c",
+    "bundled_sha256": "d277982d21bf82e45040eade981c6b138ec667fd7083972737950a33083f152c",
+    "modified": false
+  },
+  "stac_client.py": {
+    "source_sha256": "f30c2daa02d459969656879009c81fe47337384cba229b12c15905076f7decf6",
+    "bundled_sha256": "f30c2daa02d459969656879009c81fe47337384cba229b12c15905076f7decf6",
+    "modified": false
+  },
+  "grid.py": {
+    "source_sha256": "a7319c37379af57af47793aa4626c7050ad3abe5e40d9131d23508c8bf450a45",
+    "bundled_sha256": "00eedc9463584353d6df4fffc329416b3b39acf19dfebd6595a8831e8d270894",
+    "modified": true
+  }
+}
