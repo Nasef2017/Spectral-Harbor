@@ -1,8 +1,8 @@
-# Spectral Harbor 1.3.4
+# Spectral Harbor 1.4.1
 
-Standalone QGIS 4 plugin for selected Sentinel-2A and Landsat 8/9 surface-reflectance bands, with independent image processing and temporal compositing.
+Standalone QGIS 4 plugin for selected Sentinel-2A and Landsat 8/9 surface-reflectance bands through **Element 84 Earth Search** or **Microsoft Planetary Computer**, using a shared scientific processing pipeline and temporal compositing engine.
 
-Open **Processing → Toolbox → Spectral Harbor → Satellite imagery → Download surface reflectance**. Choose the satellite, polygon ROI OR extent, dates, bands and output directory. Sentinel-2A defaults to 10 m; Landsat defaults to 30 m. The result can be added to the map automatically. The Raster menu/toolbar opens a separate browser for previewing and selecting scenes.
+Open **Processing → Toolbox → Spectral Harbor → Satellite imagery → Download surface reflectance**. Choose the imagery provider (`Element 84 Earth Search` or `Microsoft Planetary Computer`), satellite, polygon ROI OR extent, dates, bands and output directory. Sentinel-2A defaults to 10 m; Landsat defaults to 30 m. The result can be added to the map automatically. The Raster menu/toolbar opens a separate browser for previewing and selecting scenes.
 
 Start with the [offline Help page](docs/HELP.html). Also included: [full guide](docs/USER_GUIDE.md), [dependencies and architecture](docs/ARCHITECTURE.md), [validation](docs/VALIDATION.md), [citations](docs/REFERENCES.md), [attribution](docs/ATTRIBUTION.md), [changelog](CHANGELOG.md), [license](LICENSE) and [notices](NOTICE).
 

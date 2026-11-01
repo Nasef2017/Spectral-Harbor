@@ -1,24 +1,25 @@
-# Spectral Harbor validation — 1.3.3
+# Spectral Harbor validation — 1.4.1
 
-Validated on Windows with QGIS 4.0.2-Norrköping, Qt 6.11.0 and Python 3.12.13. The existing 33-test suite covers parameter defaults, satellite/band filtering, raster processing, selected-band order, median/quality outputs, subprocess isolation, live feedback, cancellation and automatic map loading. Nested isolated tests exercise 20 processing regression cases and three adapter cases without mixing native packages into the QGIS test process.
+Validated on Windows with QGIS 4.0.2-Norrköping, Qt 6.11.0 and Python 3.12.
 
-## Live data evidence
+## Multi-Provider Equivalence & Performance Benchmark
 
-Earlier all-band smoke checks passed for Sentinel-2A (12 bands), Landsat-8 (7) and Landsat-9 (7) using a tiny Red Sea ROI. A separate real Processing run confirmed the default Sentinel-2A output grid is 10 m and returns a valid QGIS raster. These checks establish access and processing, not classification accuracy, a full-size regional benchmark or a guaranteed download time.
+`tests/test_spectral_harbor_providers.py` (`9/9` tests passed) and `tests/benchmark_providers.py` verify that **Element 84 Earth Search** (`earth_search`) and **Microsoft Planetary Computer** (`planetary_computer`) produce identical outputs when given matching source scenes:
 
-## Current product-label update
+| Scenario | Provider Total (s) (ES / PC) | Shared Total (s) (ES / PC) | Schema & Band Order Identical | Valid Mask Agreement | Max Abs Diff | RMSE |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Sentinel-2A Single Scene** (12 bands, 10 m) | `0.0633` / `0.0476` | `0.0448` / `0.0440` | `True` | `100.0%` | `0.0` | `0.0` |
+| **Sentinel-2A Median Composite** (2 scenes, 12 bands) | `0.0926` / `0.0890` | `0.3606` / `0.3328` | `True` | `100.0%` | `0.0` | `0.0` |
+| **Landsat-8 Single Scene** (7 bands, 30 m) | `0.0308` / `0.0305` | `0.0326` / `0.0322` | `True` | `100.0%` | `0.0` | `0.0` |
+| **Landsat-9 Single Scene** (7 bands, 30 m) | `0.0300` / `0.0304` | `0.0321` / `0.0332` | `True` | `100.0%` | `0.0` | `0.0` |
+| **Landsat-8/9 Combined Median Composite** | `0.0635` / `0.0620` | `0.1544` / `0.0658` | `True` | `100.0%` | `0.0` | `0.0` |
 
-About, metadata, short help, parameter explanations, general documentation and changelog describe Spectral Harbor directly. Generated PROCESSED_BY tags, scaling_applied_by fields and run provenance identify Spectral Harbor. Image values, normalization, nodata, scene selection, composite settings and map loading are unchanged. The adapter regression test checks the raster and JSON identifiers. Required third-party licenses/notices and technical source provenance are retained separately.
+## Regression Suite Coverage
 
-## Documentation and package checks
-
-All 19 Processing parameters have help text. The offline Help URL, About version, browser mode controls, eight local HTML links and English-only current documentation are checked. The help panel was rendered in QGIS and inspected. The package builder verifies required files, archive CRC, one top-level plugin directory and file hashes.
-
-The installed update checks the prior release, creates a complete backup, verifies all replacement files and requires a QGIS restart. See installed-update-report.json in the source deliverable. The installable ZIP contains only the standalone plugin, legal files and its documentation. No other installed plugin is changed.
-
-## Limits
-
-Headless UI tests and tiny live rasters do not exercise every canvas interaction, service outage, full-size ROI or scientific environment. Single-scene full-ROI output can retain cloudy pixels when water-only is off. Median QA and water behavior follow the documented processing policy. Output arrays remain in memory even though observations are processed in chunks. Resource guards bound grid size and estimated output memory.
-
-
-Release 1.3.3 verification: all 33 main-suite tests passed in 4.907 seconds, including the isolated processing suites and the updated raster/JSON branding assertions. Public product text was scanned, all eight local Help links resolved, original scientific source hashes were verified, and required legal notices were preserved.
+1. Provider key normalization, STAC endpoints, and collection IDs (`sentinel-2-c1-l2a` vs `sentinel-2-l2a`, `landsat-c2-l2`).
+2. STAC asset mapping (`coastal`..`swir22`/`scl` vs `B01`..`B12`/`B8A`/`SCL`) and explicit `raster:bands` calibration synthesis.
+3. Planetary Computer Azure Blob SAS URL signing, token caching, double-signing prevention, and token redaction in persisted JSON metadata.
+4. Single Scene and Temporal Median Composite numerical equivalence across Sentinel-2A, Landsat-8, Landsat-9, and Landsat-8/9 Combined.
+5. Custom band subset selection with canonical band ordering and on-demand water-index band loading.
+6. Separated `provider_specific_timings_sec` and `shared_processing_timings_sec` performance diagnostics.
+7. Stationary high-albedo coastal target preservation (`water_only=False`) in `512x512` chunked temporal median composites across both providers.

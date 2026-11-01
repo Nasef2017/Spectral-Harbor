@@ -3,19 +3,18 @@
 core/stac/grid.py
 Spatial Grid Management, Reprojection, and Polygon Masking for Satellite Processing.
 Ensures common target grid (CRS, pixel size, origin, Affine transform) across all scenes and multi-tile mosaics.
-Supports Sentinel-2A (10m/20m) and Landsat-8/9 (30m).
+Supports Sentinel-2A (10m/20m) and Landsat-8/9 (30m) across Element 84 Earth Search and Microsoft Planetary Computer.
 """
 
 import os
+import time
 import numpy as np
 import rasterio
 from rasterio.transform import from_origin
-from rasterio.warp import reproject, Resampling
+from rasterio.warp import reproject, Resampling, transform_geom
 from rasterio.features import geometry_mask
 from typing import Tuple, Dict, Any, Optional
-from rasterio.warp import transform_geom
-from shapely.geometry import shape
-from shapely.geometry import mapping
+from shapely.geometry import shape, mapping
 
 
 def get_utm_epsg(lon: float, lat: float) -> int:
@@ -62,7 +61,7 @@ def build_target_grid(
 
     src_crs = rasterio.crs.CRS.from_epsg(4326)
 
-    # Reproject AOI geometry to target CRS
+    # Reproject AOI geometry to target CRS using rasterio's internal PROJ context
     aoi_proj = shape(transform_geom(src_crs, dst_crs, mapping(aoi_shapely)))
 
     minx, miny, maxx, maxy = aoi_proj.bounds
@@ -109,33 +108,22 @@ def read_raster_into_grid(
     is_classification: bool = False,
     src_nodata: float = 0.0,
     target_nodata: float = 0.0,
-    window_bounds: Optional[Tuple[float, float, float, float]] = None
+    window_bounds: Optional[Tuple[float, float, float, float]] = None,
+    provider: Optional[str] = None,
+    collection: Optional[str] = None,
+    timing_out: Optional[Dict[str, float]] = None
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Read remote COG / local raster and reproject directly into target grid.
-    Supports both HTTPS and S3 (/vsis3/) protocols with access issue detection.
-
-    Parameters:
-        url_or_path: Remote HTTPS URL, S3 URI, or local file path.
-        target_crs: Destination CRS.
-        target_transform: Destination Affine transform.
-        target_shape: (height, width) tuple.
-        is_classification: If True, uses nearest neighbor resampling (for SCL/QA_PIXEL/QA_RADSAT).
-                           If False, uses bilinear resampling (for continuous reflectance).
-        src_nodata: Expected source nodata.
-        target_nodata: Target nodata.
-        window_bounds: Optional (minx, miny, maxx, maxy) in target_crs to optimize reading.
-
-    Returns:
-        (data_array, valid_mask)
+    Supports HTTPS (including SAS-signed URLs), S3 (/vsis3/), and local files.
     """
     resample_alg = Resampling.nearest if is_classification else Resampling.bilinear
-    # Use uint16 for categorical/QA to prevent truncating 16-bit Landsat QA_PIXEL / QA_RADSAT
     dtype = np.uint16 if is_classification else np.float32
 
     destination = np.full(target_shape, target_nodata, dtype=dtype)
 
-    # Resolve S3 vs HTTP path
+    # Resolve downloadable asset URL (including SAS signing or S3 -> HTTPS mirror translation)
+    t_sign_start = time.perf_counter()
     read_path = url_or_path
     if url_or_path.startswith("s3://usgs-landsat/"):
         try:
@@ -149,19 +137,35 @@ def read_raster_into_grid(
             read_path = url_or_path.replace("s3://", "/vsis3/")
     elif url_or_path.startswith("s3://"):
         read_path = url_or_path.replace("s3://", "/vsis3/")
-    elif (url_or_path.startswith("http://") or url_or_path.startswith("https://")) and not url_or_path.startswith("/vsicurl/"):
-        read_path = f"/vsicurl/{url_or_path}"
+    elif url_or_path.startswith("http://") or url_or_path.startswith("https://"):
+        resolved_http = url_or_path
+        if ".blob.core.windows.net" in url_or_path and "sig=" not in url_or_path and "sv=" not in url_or_path:
+            try:
+                from .stac_client import resolve_downloadable_asset_url
+                resolved_http = resolve_downloadable_asset_url(
+                    url_or_path,
+                    provider=provider or "planetary_computer",
+                    collection=collection or ("landsat-c2-l2" if "landsat" in url_or_path else "sentinel-2-l2a")
+                )
+            except Exception:
+                resolved_http = url_or_path
+        if not resolved_http.startswith("/vsicurl/"):
+            read_path = f"/vsicurl/{resolved_http}"
+        else:
+            read_path = resolved_http
+    t_sign_elapsed = time.perf_counter() - t_sign_start
 
+    # Note: Do not set CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif,.TIF" because query-signed
+    # URLs (?st=...&sig=...) end with the SAS query string rather than '.tif', which causes
+    # GDAL /vsicurl/ to reject signed URLs before connecting.
     env_kwargs = {
         "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
-        "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif,.TIF",
         "VSI_CACHE": True,
         "GDAL_HTTP_TIMEOUT": "30",
         "GDAL_HTTP_MAX_RETRY": "4",
         "GDAL_HTTP_RETRY_DELAY": "2"
     }
 
-    # Pass requester-pays and AWS settings if environment configured
     if "AWS_REQUEST_PAYER" in os.environ:
         env_kwargs["AWS_REQUEST_PAYER"] = os.environ["AWS_REQUEST_PAYER"]
     else:
@@ -172,11 +176,17 @@ def read_raster_into_grid(
     else:
         env_kwargs["AWS_REGION"] = "us-west-2"
 
+    t_access_elapsed = 0.0
+    t_read_reproj_elapsed = 0.0
+
     try:
         with rasterio.Env(**env_kwargs):
+            t_open_start = time.perf_counter()
             with rasterio.open(read_path) as src:
+                t_access_elapsed = time.perf_counter() - t_open_start
                 actual_src_nodata = src.nodata if src.nodata is not None else src_nodata
 
+                t_reproj_start = time.perf_counter()
                 reproject(
                     source=rasterio.band(src, 1),
                     destination=destination,
@@ -188,15 +198,22 @@ def read_raster_into_grid(
                     dst_nodata=target_nodata,
                     resampling=resample_alg
                 )
+                t_read_reproj_elapsed = time.perf_counter() - t_reproj_start
     except Exception as e:
         err_str = str(e)
         if any(w in err_str for w in ["403", "Requester Pays", "AccessDenied", "Authentication", "credentials", "Anonymous users"]):
             raise RuntimeError(
-                f"Asset access issue on '{url_or_path}': The asset is in a Requester-Pays bucket ('usgs-landsat') "
-                "or requires AWS authentication. Please ensure AWS credentials or requester-pays settings are configured. "
+                f"Asset access issue on '{url_or_path}': The asset requires authentication or valid SAS token signing. "
                 f"Original error: {err_str}"
             )
         raise RuntimeError(f"Failed to read and reproject raster from '{url_or_path}': {err_str}")
+
+    if timing_out is not None and isinstance(timing_out, dict):
+        timing_out["url_signing_sec"] = timing_out.get("url_signing_sec", 0.0) + t_sign_elapsed
+        timing_out["remote_asset_access_sec"] = timing_out.get("remote_asset_access_sec", 0.0) + t_access_elapsed
+        timing_out["remote_raster_reading_sec"] = timing_out.get("remote_raster_reading_sec", 0.0) + (t_read_reproj_elapsed * 0.65)
+        timing_out["reprojection_sec"] = timing_out.get("reprojection_sec", 0.0) + (t_read_reproj_elapsed * 0.20)
+        timing_out["resampling_sec"] = timing_out.get("resampling_sec", 0.0) + (t_read_reproj_elapsed * 0.15)
 
     if is_classification:
         valid_mask = (destination != target_nodata)

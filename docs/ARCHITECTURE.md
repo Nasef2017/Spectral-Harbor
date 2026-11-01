@@ -2,30 +2,27 @@
 
 ## QGIS interface
 
-The Qt6 scene browser and Processing provider run in QGIS. They send JSON jobs to fresh Python child processes from the same QGIS distribution. The band checklist follows the satellite. Pixel size defaults to 10 m for Sentinel-2A and 30 m for Landsat; untouched defaults follow satellite changes and manual overrides are retained. Zero means automatic selection in Batch/Modeler.
+The Qt6 scene browser and Processing provider run in QGIS. They send JSON jobs to fresh Python child processes from the same QGIS distribution. Both interfaces include an **Imagery provider** selector (`Element 84 Earth Search` or `Microsoft Planetary Computer`). The band checklist follows the satellite. Pixel size defaults to 10 m for Sentinel-2A and 30 m for Landsat; untouched defaults follow satellite changes and manual overrides are retained. Zero means automatic selection in Batch/Modeler.
 
-## Search and raster processing
+## Provider abstraction and shared processing pipeline
 
-Search uses the Earth Search STAC catalog and GDAL/OGR geometry tools for ROI coverage checks. Raster processing runs separately with rasterio and shapely, without loading QGIS, pyproj or osgeo in that process. The adapter maps scene/asset metadata to the processor, forwards selected bands and feedback, and checks memory limits. Detailed source provenance, modification records and third-party licenses are retained separately in the legal/source records.
+Provider-specific logic in `catalog.py` is strictly limited to:
+1. STAC endpoint and collection selection (`sentinel-2-c1-l2a` / `landsat-c2-l2` on Earth Search vs. `sentinel-2-l2a` / `landsat-c2-l2` on Microsoft Planetary Computer).
+2. Scene discovery and metadata normalization (`normalize_feature`).
+3. STAC asset and band-name mapping (`coastal`..`swir22`/`scl` vs. `B01`..`B12`/`B8A`/`SCL`, `SR_B1`..`SR_B7`/`QA_PIXEL`/`QA_RADSAT`).
+4. Authentication and Azure Blob SAS URL signing where required (`sign_planetary_computer_url`, `asset_url`).
+5. Resolving downloadable raster assets (`resolve_downloadable_asset_url`).
+
+After normalization, both providers feed into the **exact same shared processing pipeline** (`reference_adapter.py` and `vendor/bathymetrix_stac/`). Search uses GDAL/OGR geometry tools for ROI coverage checks. Raster processing runs separately with rasterio and shapely, without loading QGIS, pyproj or osgeo in that process.
 
 Images are read as remote COG windows, normalized using sensor-specific calibration/baseline rules, and clipped to the ROI. The UTM grid follows the ROI centroid and snapped bounds. Reflectance is resampled bilinearly and categorical QA by nearest neighbour. The median uses 512-pixel chunks for scene observations; full output arrays remain in memory. A 25-million-pixel guard and conservative 1.5 GB output estimate reject oversized requests.
 
-Single-scene full-ROI and temporal-median quality behavior differ as documented in USER_GUIDE.md. Single-scene method/strictness/threshold controls do not replace the median's hybrid/consensus policy. Only requested reflectance bands are read, so spectral water methods need their green/NIR or green/SWIR1 inputs selected.
+## Transport, feedback, performance diagnostics and outputs
 
-## Transport, feedback and outputs
+The reader uses an in-memory read cache, a 30-second request timeout, four retries and a two-second retry delay (`CPL_VSIL_CURL_ALLOWED_EXTENSIONS` is omitted so query-signed SAS URLs open cleanly). Public Planetary Computer and Landsat access uses short-lived SAS tokens, cached and refreshed before expiry. Stored source metadata (`_Processing_Metadata.json` and `provenance.json`) strips temporary access tokens. GUI logs redact remote URLs.
 
-The reader uses TIFF-only remote probes, a read cache, a 30-second request timeout, four retries and a two-second retry delay. Public Landsat access uses short-lived account/container tokens, cached and refreshed before expiry. Stored source metadata excludes temporary access tokens. GUI logs redact remote URLs.
+Performance diagnostics in `_Processing_Metadata.json` and `provenance.json` separate:
+- **Provider-specific measurements**: `stac_search`, `asset_discovery`, `url_signing`, `remote_asset_access`, `remote_raster_reading`
+- **Shared processing measurements**: `reflectance_conversion`, `masking`, `reprojection`, `resampling`, `median_generation`, `geotiff_writing`
 
-SH_EVENT telemetry forwards band messages and stage progress. Processing polls a private log every 0.1 s; the scene browser uses QProcess events. Progress is not a network-byte percentage. Cancel terminates the active private child and leaves any partial run directory incomplete. No global PROJ/DLL settings are changed.
-
-Satellite/scene-specific products retain their filenames. reflectance.tif is a byte-identical hard-link alias, with a copy fallback. Raster PROCESSED_BY tags and scaling_applied_by processing metadata identify Spectral Harbor; image values and scientific settings are preserved. provenance.json is written last. Processing schedules successful map loading on the main thread via QgsProcessingContext.addLayerToLoadOnCompletion. Count/std/occurrence rasters are median outputs.
-
-## Dependencies and validation
-
-Use QGIS 4 / Qt6, Python >=3.12, GDAL >=3.8, NumPy >=1.26, rasterio >=1.3 and shapely >=2.0 from one QGIS installation. Do not install mixed native binary wheels into QGIS. Search and raster processing use separate processes and native-library sets.
-
-Tests cover catalog filtering, parameter defaults, band ordering, raster normalization/quality, composite outputs, worker isolation, progress, cancellation and map loading. Scientific-source integrity and adapted-grid hashes are recorded in the source manifest. All-band live checks cover Sentinel-2A and Landsat 8/9. See VALIDATION.md for evidence and limits.
-
-Installed updates verify the previous release, save a backup and check every replacement file. Restart QGIS to load a new release. No other installed plugin is changed. Third-party licensing and source attribution are retained in ATTRIBUTION.md, NOTICE and the source records.
-
-References: https://gdal.org/en/stable/user/configoptions.html ; https://rasterio.readthedocs.io/en/stable/topics/reproject.html .
+Satellite/scene-specific products retain their descriptive filenames (`primary_raster.txt` records the primary output path). Raster `PROCESSED_BY` and `PROVIDER` tags and `scaling_applied_by` processing metadata identify Spectral Harbor; image values and scientific settings are preserved. `provenance.json` is written last. Processing schedules successful map loading on the main thread via `QgsProcessingContext.addLayerToLoadOnCompletion`.

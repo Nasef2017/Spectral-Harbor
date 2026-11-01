@@ -2,17 +2,17 @@
 name=Spectral Harbor
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
-version=1.3.4
+version=1.4.1
 author=Mohamed Aly Nasef
 email=Eng.m.nasef2017@gmail.com
-description=Download selected Sentinel-2A and Landsat 8/9 surface-reflectance bands in QGIS Processing.
-about=Spectral Harbor is a standalone QGIS 4 plugin for downloading selected surface-reflectance bands from Sentinel-2A Level-2A and Landsat 8/9 Collection 2 Level-2 through Earth Search.
+description=Download selected Sentinel-2A and Landsat 8/9 surface-reflectance bands via Element 84 Earth Search or Microsoft Planetary Computer in QGIS Processing.
+about=Spectral Harbor is a standalone QGIS 4 plugin for downloading selected surface-reflectance bands from Sentinel-2A Level-2A and Landsat 8/9 Collection 2 Level-2 through Element 84 Earth Search or Microsoft Planetary Computer using a shared scientific processing pipeline.
     
-    Choose the satellite, area, dates, scene-cloud limit and bands. Create a single-scene image or a temporal median. Output pixels default to 10 m for Sentinel-2A and 30 m for Landsat; Sentinel bands with native 20/60 m resolution are resampled to the chosen grid.
+    Choose the imagery provider, satellite, area, dates, scene-cloud limit and bands. Create a single-scene image or a temporal median. Output pixels default to 10 m for Sentinel-2A and 30 m for Landsat; Sentinel bands with native 20/60 m resolution are resampled to the chosen grid.
     
     Spectral Harbor handles image reading, sensor-specific reflectance normalization, quality layers and temporal compositing in a separate processing task. It runs independently and does not require another QGIS plugin.
     
-    Results are Float32 GeoTIFFs with -9999 nodata, native processing metadata, and descriptive Float32 filenames (e.g. S2A_YYYYMMDD_<SceneID>_BOA_Float32.tif) that are loaded into QGIS with matching layer titles. Median runs also create the original count, standard-deviation and water-occurrence outputs. Existing water options follow the upstream single-scene/composite behavior.
+    Results are Float32 GeoTIFFs with -9999 nodata, native processing metadata, separated provider vs. shared performance diagnostics, and descriptive Float32 filenames (e.g. S2A_YYYYMMDD_<SceneID>_BOA_Float32.tif) that are loaded into QGIS with matching layer titles. Median runs also create the original count, standard-deviation and water-occurrence outputs. Existing water options follow the upstream single-scene/composite behavior.
     
     Developed by Mohamed Aly Nasef. License: GPL-3.0-or-later, with third-party notices included in the distribution. Satellite data and access services retain their separate terms. Official stable release; see the bundled guide, references, notices and validation report.
 category=Raster
@@ -20,7 +20,7 @@ icon=icon.png
 experimental=False
 deprecated=False
 hasProcessingProvider=True
-tags=sentinel-2,landsat,stac,surface reflectance,water,download
+tags=sentinel-2,landsat,stac,planetary computer,earth search,surface reflectance,water,download
 homepage=https://github.com/Nasef2017/Spectral-Harbor
 repository=https://github.com/Nasef2017/Spectral-Harbor
 tracker=https://github.com/Nasef2017/Spectral-Harbor/issues
